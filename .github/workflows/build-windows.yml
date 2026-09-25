@@ -1,0 +1,63 @@
+name: Build Windows Exe Release
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Qt 6.8
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.0'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2022_64'
+          modules: 'qtsvg'
+
+      - name: Setup MSVC Compiler
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Configure CMake
+        run: |
+          cmake -B build_win -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${{ env.Qt6_DIR }}"
+
+      - name: Build PhotoColla
+        run: |
+          cmake --build build_win --config Release --parallel
+
+      - name: Package with windeployqt
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package
+          Copy-Item build_win/Release/PhotoColla.exe package/
+          & "${{ env.Qt6_DIR }}/bin/windeployqt.exe" --no-translations --compiler-runtime package/PhotoColla.exe
+          Compress-Archive -Path package/* -DestinationPath PhotoColla-Windows-x64.zip
+
+      - name: Upload Artifact (Zip with Exe)
+        uses: actions/upload-artifact@v4
+        with:
+          name: PhotoColla-Windows-x64
+          path: PhotoColla-Windows-x64.zip
+          retention-days: 14
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: v1.0.0-windows
+          name: "PhotoColla v1.0.0 (Windows Standalone Exe)"
+          draft: false
+          prerelease: false
+          files: PhotoColla-Windows-x64.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
