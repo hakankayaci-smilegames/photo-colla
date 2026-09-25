@@ -32,6 +32,7 @@ signals:
     void zoomChanged(double zoom);
     void cursorCoordinatesChanged(const QPointF& docPos);
     void slotImageRequested(int slotIndex);
+    void filesDroppedOnCanvas(const QStringList& files);
 
 protected:
     void paintEvent(QPaintEvent* event) override;
@@ -80,6 +81,7 @@ private:
     // Drop target feedback
     int m_dropTargetSlotIndex{-1};
     int m_dragSourceSlotIndex{-1};
+    QPixmap m_dragPreviewPixmap;
 };
 
 } // namespace PhotoColla::UI

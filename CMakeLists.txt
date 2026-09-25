@@ -72,6 +72,8 @@ set(UI_SOURCES
     src/ui/properties/properties_panel.cpp
     src/ui/dialogs/export_dialog.h
     src/ui/dialogs/export_dialog.cpp
+    src/ui/dialogs/welcome_dialog.h
+    src/ui/dialogs/welcome_dialog.cpp
 )
 
 set(EXPORT_SOURCES

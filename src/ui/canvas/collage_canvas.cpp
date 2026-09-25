@@ -150,12 +150,34 @@ void CollageCanvas::paintEvent(QPaintEvent* /*event*/)
         SlotRenderer::renderSlot(painter, slotItems[static_cast<size_t>(activeEdit)], docSize, true, true);
     }
 
-    // Pass 3: Drop Target Highlight
+    // Pass 3: Drop Target Highlight & Live Preview
     if (m_dropTargetSlotIndex >= 0 && m_dropTargetSlotIndex < static_cast<int>(slotItems.size())) {
         auto* slot = m_document->slotAt(m_dropTargetSlotIndex);
         if (slot) {
             QPainterPath clipPath = slot->calculateClipPath(docSize);
             painter.save();
+            
+            // Render transparent preview of the dragged image
+            if (!m_dragPreviewPixmap.isNull()) {
+                painter.save();
+                painter.setClipPath(clipPath);
+                painter.setOpacity(0.4); // Şeffaf önizleme (40% opacity)
+                
+                QRectF innerRect = slot->calculateInnerRect(docSize);
+                QPointF center = innerRect.center();
+                painter.translate(center);
+                
+                // Scale to cover the slot nicely
+                double scaleX = innerRect.width() / m_dragPreviewPixmap.width();
+                double scaleY = innerRect.height() / m_dragPreviewPixmap.height();
+                double scale = std::max(scaleX, scaleY);
+                painter.scale(scale, scale);
+                
+                QRectF targetRect(-m_dragPreviewPixmap.width() / 2.0, -m_dragPreviewPixmap.height() / 2.0, m_dragPreviewPixmap.width(), m_dragPreviewPixmap.height());
+                painter.drawPixmap(targetRect.toRect(), m_dragPreviewPixmap);
+                painter.restore();
+            }
+            
             painter.setPen(QPen(QColor(56, 189, 248), 4.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
             painter.setBrush(QColor(56, 189, 248, 40));
             painter.drawPath(clipPath);
@@ -411,6 +433,18 @@ void CollageCanvas::dragEnterEvent(QDragEnterEvent* event)
 {
     if (event->mimeData()->hasUrls() || event->mimeData()->hasFormat("application/x-photocolla-slot")) {
         event->acceptProposedAction();
+        
+        // Cache the preview image
+        if (event->mimeData()->hasUrls() && !event->mimeData()->urls().isEmpty()) {
+            QString file = event->mimeData()->urls().first().toLocalFile();
+            m_dragPreviewPixmap = QPixmap(file);
+        } else if (event->mimeData()->hasFormat("application/x-photocolla-slot")) {
+            int srcSlot = event->mimeData()->data("application/x-photocolla-slot").toInt();
+            auto* slot = m_document->slotAt(srcSlot);
+            if (slot) {
+                m_dragPreviewPixmap = slot->pixmap();
+            }
+        }
     }
 }
 
@@ -430,6 +464,7 @@ void CollageCanvas::dragMoveEvent(QDragMoveEvent* event)
 
 void CollageCanvas::dragLeaveEvent(QDragLeaveEvent* event)
 {
+    m_dragPreviewPixmap = QPixmap();
     if (m_dropTargetSlotIndex != -1) {
         m_dropTargetSlotIndex = -1;
         update();
@@ -439,6 +474,7 @@ void CollageCanvas::dragLeaveEvent(QDragLeaveEvent* event)
 
 void CollageCanvas::dropEvent(QDropEvent* event)
 {
+    m_dragPreviewPixmap = QPixmap();
     int targetSlotIndex = m_dropTargetSlotIndex;
     m_dropTargetSlotIndex = -1;
     update();
@@ -456,8 +492,6 @@ void CollageCanvas::dropEvent(QDropEvent* event)
             auto* srcSlot = m_document->slotAt(sourceSlotIndex);
             auto* dstSlot = m_document->slotAt(targetSlotIndex);
             if (srcSlot && dstSlot) {
-                // To keep it simple but powerful, we'll execute two SetSlotImageCommands.
-                // Ideally this would be a single macro command.
                 QString srcPath = srcSlot->imagePath();
                 QPixmap srcPix = srcSlot->pixmap();
                 
@@ -476,6 +510,7 @@ void CollageCanvas::dropEvent(QDropEvent* event)
     if (mimeData->hasUrls() && !mimeData->urls().isEmpty()) {
         int currentSlot = targetSlotIndex;
         int maxSlots = m_document->slotCount();
+        QStringList addedFiles;
         
         for (const QUrl& url : mimeData->urls()) {
             if (!url.isLocalFile()) continue;
@@ -484,8 +519,12 @@ void CollageCanvas::dropEvent(QDropEvent* event)
             
             if (!pixmap.isNull() && currentSlot < maxSlots) {
                 m_history->push(new Core::SetSlotImageCommand(m_document, currentSlot, filePath, pixmap));
+                addedFiles.append(filePath);
                 currentSlot++;
             }
+        }
+        if (!addedFiles.isEmpty()) {
+            emit filesDroppedOnCanvas(addedFiles);
         }
         event->acceptProposedAction();
     }

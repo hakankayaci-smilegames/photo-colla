@@ -25,7 +25,12 @@ public:
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow() override = default;
 
+    void loadProject(const QString& path);
+
 private slots:
+    void onSaveProject();
+    void onSaveProjectAs();
+    void onOpenProject();
     void onUndo();
     void onRedo();
     void onExport();

@@ -3,6 +3,8 @@ name: Build Windows Exe Release
 on:
   push:
     branches: [ main ]
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 jobs:
@@ -15,7 +17,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup MSYS2 and Install Qt6
+      - name: Setup MSYS2 and Install Qt6 & Tools
         uses: msys2/setup-msys2@v2
         with:
           msystem: UCRT64
@@ -26,6 +28,7 @@ jobs:
             mingw-w64-ucrt-x86_64-ninja
             mingw-w64-ucrt-x86_64-qt6-base
             mingw-w64-ucrt-x86_64-qt6-svg
+            mingw-w64-ucrt-x86_64-ntldd
 
       - name: Build PhotoColla (C++20 Release)
         shell: msys2 {0}
@@ -40,35 +43,85 @@ jobs:
           cp build/PhotoColla.exe package/
           windeployqt --no-translations --compiler-runtime package/PhotoColla.exe
 
-          # Recursive dependency resolver to copy ALL missing MSYS2 DLLs
+          # Comprehensive Dependency Resolver for MSYS2
           python3 -c "
           import os, subprocess, shutil
 
-          dest = 'package'
-          for iteration in range(10):
-              new_copied = 0
+          dest = os.path.abspath('package')
+          print(f'Target deployment directory: {dest}')
+
+          # 1. Recursive resolution with ntldd
+          for loop in range(5):
+              added = 0
+              binaries = []
               for root, dirs, files in os.walk(dest):
-                  for file in files:
-                      if file.endswith('.exe') or file.endswith('.dll'):
-                          filepath = os.path.join(root, file)
-                          try:
-                              out = subprocess.check_output(['ldd', filepath], text=True, stderr=subprocess.DEVNULL)
-                              for line in out.splitlines():
-                                  parts = line.strip().split(' => ')
-                                  if len(parts) == 2:
-                                      dll_name = parts[0].strip()
-                                      dll_path = parts[1].split(' ')[0].strip()
-                                      if dll_path.startswith('/ucrt64/') and os.path.exists(dll_path):
-                                          target = os.path.join(dest, dll_name)
-                                          if not os.path.exists(target):
-                                              print(f'Copying missing runtime DLL: {dll_name}')
-                                              shutil.copy2(dll_path, target)
-                                              new_copied += 1
-                          except Exception:
-                              pass
-              if new_copied == 0:
-                  print(f'All transitive DLL dependencies resolved successfully in pass {iteration + 1}!')
+                  for f in files:
+                      if f.lower().endswith(('.exe', '.dll')):
+                          binaries.append(os.path.join(root, f))
+
+              for b in binaries:
+                  try:
+                      out = subprocess.check_output(['ntldd', '-R', b], text=True, errors='ignore')
+                      for line in out.splitlines():
+                          if '=>' in line:
+                              parts = line.split('=>')
+                              dll_name = parts[0].strip()
+                              dll_path = parts[1].split('(')[0].strip()
+                              if 'windows' not in dll_path.lower() and 'system32' not in dll_path.lower():
+                                  if os.path.isfile(dll_path):
+                                      target = os.path.join(dest, os.path.basename(dll_path))
+                                      if not os.path.exists(target):
+                                          shutil.copy2(dll_path, target)
+                                          print(f'Copied via ntldd: {os.path.basename(dll_path)}')
+                                          added += 1
+                                  else:
+                                      for sdir in ['/ucrt64/bin', 'C:\\msys64\\ucrt64\\bin', '/c/msys64/ucrt64/bin']:
+                                          cand = os.path.join(sdir, dll_name)
+                                          if os.path.isfile(cand):
+                                              target = os.path.join(dest, dll_name)
+                                              if not os.path.exists(target):
+                                                  shutil.copy2(cand, target)
+                                                  print(f'Copied from {sdir}: {dll_name}')
+                                                  added += 1
+                                              break
+                  except Exception as e:
+                      pass
+              if added == 0:
+                  print(f'Dependency resolution stabilized after {loop + 1} passes.')
                   break
+
+          # 2. Guarantee critical compiler and Qt runtime DLLs are present
+          critical_dlls = [
+              'libstdc++-6.dll',
+              'libgcc_s_seh-1.dll',
+              'libwinpthread-1.dll',
+              'libpcre2-16-0.dll',
+              'libzstd.dll',
+              'libdouble-conversion.dll',
+              'libharfbuzz-0.dll',
+              'libfreetype-6.dll',
+              'libpng16-16.dll',
+              'libbrotlicommon.dll',
+              'libbrotlidec.dll',
+              'libgraphite2.dll',
+              'libintl-8.dll',
+              'libiconv-2.dll',
+              'libglib-2.0-0.dll'
+          ]
+
+          for cd in critical_dlls:
+              target = os.path.join(dest, cd)
+              if not os.path.exists(target):
+                  for sdir in ['/ucrt64/bin', 'C:\\msys64\\ucrt64\\bin', '/c/msys64/ucrt64/bin']:
+                      cand = os.path.join(sdir, cd)
+                      if os.path.isfile(cand):
+                          shutil.copy2(cand, target)
+                          print(f'Guaranteed critical copy: {cd}')
+                          break
+
+          print('\n--- VERIFIED PACKAGE CONTENTS ---')
+          for f in sorted(os.listdir(dest)):
+              print(f' - {f}')
           "
 
       - name: Compress into Zip Archive
@@ -85,10 +138,9 @@ jobs:
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
-        if: github.ref == 'refs/heads/main'
         with:
-          tag_name: v1.0.0-windows
-          name: "PhotoColla v1.0.0 (Windows Standalone Exe)"
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.0.1-windows' }}
+          name: ${{ startsWith(github.ref, 'refs/tags/') && format('PhotoColla {0} (Windows Standalone Exe)', github.ref_name) || 'PhotoColla v1.0.1 (Windows Standalone Exe)' }}
           draft: false
           prerelease: false
           files: PhotoColla-Windows-x64.zip

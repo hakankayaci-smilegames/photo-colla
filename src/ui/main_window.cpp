@@ -10,6 +10,7 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QKeySequence>
+#include <QSettings>
 
 namespace PhotoColla::UI {
 
@@ -87,6 +88,13 @@ void MainWindow::setupMenusAndToolbars()
 
     // File Menu
     auto* fileMenu = mBar->addMenu(tr("&File"));
+    auto* openProjectAction = fileMenu->addAction(tr("Open Project..."), this, &MainWindow::onOpenProject);
+    openProjectAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_O));
+    auto* saveProjectAction = fileMenu->addAction(tr("Save Project"), this, &MainWindow::onSaveProject);
+    saveProjectAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_S));
+    auto* saveProjectAsAction = fileMenu->addAction(tr("Save Project As..."), this, &MainWindow::onSaveProjectAs);
+    saveProjectAsAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S));
+    fileMenu->addSeparator();
     auto* importAction = fileMenu->addAction(tr("Import Photos..."), this, &MainWindow::onImportPhotos);
     importAction->setShortcut(QKeySequence::Open);
     fileMenu->addSeparator();
@@ -160,6 +168,11 @@ void MainWindow::setupConnections()
         m_statusZoomLabel->setText(QString("Zoom: %1%").arg(static_cast<int>(zoom * 100)));
     });
     connect(m_canvas, &CollageCanvas::slotImageRequested, this, &MainWindow::onSlotImageRequested);
+    connect(m_canvas, &CollageCanvas::filesDroppedOnCanvas, this, [this](const QStringList& files) {
+        for (const QString& file : files) {
+            m_toolboxPanel->addPhotoToLibrary(file);
+        }
+    });
 
     // Toolbox signals
     connect(m_toolboxPanel, &ToolboxPanel::templateSelected, this, [this](const QString& id) {
@@ -378,4 +391,52 @@ void MainWindow::onExport()
     }
 }
 
+
+
+void MainWindow::loadProject(const QString& path)
+{
+    if (m_document->loadProject(path)) {
+        m_history->clear();
+        m_canvas->fitToScreen();
+    } else {
+        QMessageBox::critical(this, tr("Error"), tr("Failed to load project file."));
+    }
+}
+
+void MainWindow::onOpenProject()
+{
+    QString path = QFileDialog::getOpenFileName(this, tr("Open Project"), QString(), tr("PhotoColla Projects (*.pcolla)"));
+    if (!path.isEmpty()) {
+        loadProject(path);
+    }
+}
+
+void MainWindow::onSaveProject()
+{
+    if (m_document->currentFilePath().isEmpty()) {
+        onSaveProjectAs();
+    } else {
+        if (!m_document->saveProject(m_document->currentFilePath())) {
+            QMessageBox::critical(this, tr("Error"), tr("Failed to save project file."));
+        } else {
+            // Also add to recent projects
+            QSettings settings("PhotoColla", "Studio");
+            QStringList recent = settings.value("RecentProjects").toStringList();
+            recent.removeAll(m_document->currentFilePath());
+            recent.prepend(m_document->currentFilePath());
+            while (recent.size() > 10) recent.removeLast();
+            settings.setValue("RecentProjects", recent);
+        }
+    }
+}
+
+void MainWindow::onSaveProjectAs()
+{
+    QString path = QFileDialog::getSaveFileName(this, tr("Save Project As"), QString(), tr("PhotoColla Projects (*.pcolla)"));
+    if (!path.isEmpty()) {
+        if (!path.endsWith(".pcolla", Qt::CaseInsensitive)) path += ".pcolla";
+        m_document->setCurrentFilePath(path);
+        onSaveProject();
+    }
+}
 } // namespace PhotoColla::UI

@@ -5,6 +5,7 @@
 
 #include "ui/splash/splash_screen.h"
 #include "ui/main_window.h"
+#include "ui/dialogs/welcome_dialog.h"
 
 int main(int argc, char *argv[])
 {
@@ -27,7 +28,18 @@ int main(int argc, char *argv[])
     auto* mainWindow = new PhotoColla::UI::MainWindow();
 
     QObject::connect(splash, &PhotoColla::UI::SplashScreen::initializationComplete, [splash, mainWindow]() {
-        mainWindow->show();
+        splash->hide();
+
+        PhotoColla::UI::WelcomeDialog welcome;
+        if (welcome.exec() == QDialog::Accepted) {
+            if (welcome.userAction() == PhotoColla::UI::WelcomeDialog::ResultAction::OpenCollage) {
+                mainWindow->loadProject(welcome.selectedProjectPath());
+            }
+            mainWindow->show();
+        } else {
+            QApplication::quit();
+        }
+        
         splash->deleteLater();
     });
 

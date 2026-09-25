@@ -53,6 +53,12 @@ public:
     bool loadTemplateFromJson(const QString& templateId, const QString& jsonFilePath = ":/assets/templates/default_templates.json");
     void createGridTemplate(int rows, int cols);
 
+    // Project File (.colla) Support
+    bool saveProject(const QString& filePath);
+    bool loadProject(const QString& filePath);
+    [[nodiscard]] QString currentFilePath() const { return m_currentFilePath; }
+    void setCurrentFilePath(const QString& path) { m_currentFilePath = path; }
+
     // Global Layout Bulk Adjustments
     void setGlobalMargin(double margin);
     void setGlobalPadding(double padding);
@@ -72,6 +78,7 @@ private:
     std::vector<Slot> m_slots;
     int m_selectedSlotIndex{-1};
     int m_editingSlotIndex{-1};
+    QString m_currentFilePath;
 };
 
 } // namespace PhotoColla::Core

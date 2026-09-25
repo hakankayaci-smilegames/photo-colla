@@ -218,4 +218,109 @@ void CollageDocument::setGlobalBorderColor(const QColor& color)
     emit documentChanged();
 }
 
+
+
+bool CollageDocument::saveProject(const QString& filePath)
+{
+    QJsonObject root;
+    root["version"] = 1;
+    root["canvas_width"] = m_canvasSize.width();
+    root["canvas_height"] = m_canvasSize.height();
+    root["bg_color"] = m_backgroundColor.name(QColor::HexArgb);
+
+    QJsonArray slotsArray;
+    for (const auto& slot : m_slots) {
+        QJsonObject slotObj;
+        slotObj["id"] = slot.id();
+        
+        QJsonObject rect;
+        rect["x"] = slot.relativeRect().x();
+        rect["y"] = slot.relativeRect().y();
+        rect["w"] = slot.relativeRect().width();
+        rect["h"] = slot.relativeRect().height();
+        slotObj["relative_rect"] = rect;
+
+        slotObj["image_path"] = slot.imagePath();
+        
+        QJsonObject offset;
+        offset["x"] = slot.imageOffset().x();
+        offset["y"] = slot.imageOffset().y();
+        slotObj["image_offset"] = offset;
+        
+        slotObj["image_scale"] = slot.imageScale();
+        slotObj["image_rotation"] = slot.imageRotation();
+
+        slotObj["margin"] = slot.margin();
+        slotObj["padding"] = slot.padding();
+        slotObj["border_radius"] = slot.borderRadius();
+        slotObj["border_width"] = slot.borderWidth();
+        slotObj["border_color"] = slot.borderColor().name(QColor::HexArgb);
+        slotObj["slot_bg_color"] = slot.slotBackgroundColor().name(QColor::HexArgb);
+
+        slotsArray.append(slotObj);
+    }
+    root["slots"] = slotsArray;
+
+    QJsonDocument doc(root);
+    QFile file(filePath);
+    if (!file.open(QIODevice::WriteOnly)) {
+        return false;
+    }
+    file.write(doc.toJson());
+    m_currentFilePath = filePath;
+    return true;
+}
+
+bool CollageDocument::loadProject(const QString& filePath)
+{
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+
+    QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    if (doc.isNull() || !doc.isObject()) return false;
+
+    QJsonObject root = doc.object();
+    m_canvasSize = QSizeF(root["canvas_width"].toDouble(1200.0), root["canvas_height"].toDouble(1200.0));
+    m_backgroundColor = QColor(root["bg_color"].toString("#ff141416"));
+
+    m_slots.clear();
+    m_selectedSlotIndex = -1;
+    m_editingSlotIndex = -1;
+
+    QJsonArray slotsArray = root["slots"].toArray();
+    for (const auto& val : slotsArray) {
+        QJsonObject slotObj = val.toObject();
+        QJsonObject rect = slotObj["relative_rect"].toObject();
+        
+        Slot slot;
+        slot.setId(slotObj["id"].toString());
+        slot.setRelativeRect(QRectF(rect["x"].toDouble(), rect["y"].toDouble(), rect["w"].toDouble(), rect["h"].toDouble()));
+
+        QString imgPath = slotObj["image_path"].toString();
+        if (!imgPath.isEmpty() && QFile::exists(imgPath)) {
+            QPixmap pm(imgPath);
+            slot.setImage(imgPath, pm);
+        }
+
+        QJsonObject offset = slotObj["image_offset"].toObject();
+        slot.setImageOffset(QPointF(offset["x"].toDouble(), offset["y"].toDouble()));
+        slot.setImageScale(slotObj["image_scale"].toDouble(1.0));
+        slot.setImageRotation(slotObj["image_rotation"].toDouble(0.0));
+
+        slot.setMargin(slotObj["margin"].toDouble(6.0));
+        slot.setPadding(slotObj["padding"].toDouble(0.0));
+        slot.setBorderRadius(slotObj["border_radius"].toDouble(12.0));
+        slot.setBorderWidth(slotObj["border_width"].toDouble(2.0));
+        slot.setBorderColor(QColor(slotObj["border_color"].toString("#ff3c3c41")));
+        slot.setSlotBackgroundColor(QColor(slotObj["slot_bg_color"].toString("#ff1e1e22")));
+
+        m_slots.push_back(slot);
+    }
+
+    m_currentFilePath = filePath;
+    emit documentChanged();
+    return true;
+}
 } // namespace PhotoColla::Core
