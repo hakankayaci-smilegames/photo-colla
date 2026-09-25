@@ -35,3 +35,6 @@ ui_*.h
 # OS artifacts
 .DS_Store
 Thumbs.db
+
+# Agent & Prompt instructions
+GEMINI.md
