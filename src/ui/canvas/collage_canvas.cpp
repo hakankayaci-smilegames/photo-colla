@@ -164,12 +164,18 @@ void CollageCanvas::paintEvent(QPaintEvent* /*event*/)
             painter.setBrush(Qt::NoBrush);
             painter.drawRect(QRectF(tl, br));
             
-            // Draw 4 handles
+            // Draw 8 handles
             painter.setPen(QPen(QColor(0, 0, 0), 1.0));
             painter.setBrush(QColor(255, 255, 255));
-            QPointF corners[4] = {imgRect.topLeft(), imgRect.topRight(), imgRect.bottomRight(), imgRect.bottomLeft()};
-            for (int i = 0; i < 4; ++i) {
-                painter.drawRect(getHandleRectInViewport(corners[i]));
+            QPointF handles[8] = {
+                imgRect.topLeft(), imgRect.topRight(), imgRect.bottomRight(), imgRect.bottomLeft(),
+                QPointF(imgRect.center().x(), imgRect.top()),
+                QPointF(imgRect.right(), imgRect.center().y()),
+                QPointF(imgRect.center().x(), imgRect.bottom()),
+                QPointF(imgRect.left(), imgRect.center().y())
+            };
+            for (int i = 0; i < 8; ++i) {
+                painter.drawRect(getHandleRectInViewport(handles[i]));
             }
             
             painter.restore();
@@ -307,14 +313,29 @@ void CollageCanvas::mouseMoveEvent(QMouseEvent* event)
             QPointF startVec = m_dragStartPos - center;
             QPointF currentVec = currentPos - center;
             
-            double startLen = std::sqrt(startVec.x()*startVec.x() + startVec.y()*startVec.y());
-            double currentLen = std::sqrt(currentVec.x()*currentVec.x() + currentVec.y()*currentVec.y());
-            
-            if (startLen > 1.0) {
-                double scaleRatio = currentLen / startLen;
-                double newScale = std::clamp(m_dragStartScale * scaleRatio, 0.05, 10.0);
-                slot->setImageScale(newScale);
-                update();
+            if (m_dragHandleIndex >= 0 && m_dragHandleIndex <= 3) {
+                double startLen = std::sqrt(startVec.x()*startVec.x() + startVec.y()*startVec.y());
+                double currentLen = std::sqrt(currentVec.x()*currentVec.x() + currentVec.y()*currentVec.y());
+                if (startLen > 1.0) {
+                    double scaleRatio = currentLen / startLen;
+                    QPointF newScale = m_dragStartScale * scaleRatio;
+                    slot->setImageScale(QPointF(std::clamp(newScale.x(), 0.05, 10.0), std::clamp(newScale.y(), 0.05, 10.0)));
+                    update();
+                }
+            } else if (m_dragHandleIndex == 4 || m_dragHandleIndex == 6) {
+                if (std::abs(startVec.y()) > 1.0) {
+                    double scaleRatio = std::abs(currentVec.y()) / std::abs(startVec.y());
+                    double newScaleY = std::clamp(m_dragStartScale.y() * scaleRatio, 0.05, 10.0);
+                    slot->setImageScale(QPointF(m_dragStartScale.x(), newScaleY));
+                    update();
+                }
+            } else if (m_dragHandleIndex == 5 || m_dragHandleIndex == 7) {
+                if (std::abs(startVec.x()) > 1.0) {
+                    double scaleRatio = std::abs(currentVec.x()) / std::abs(startVec.x());
+                    double newScaleX = std::clamp(m_dragStartScale.x() * scaleRatio, 0.05, 10.0);
+                    slot->setImageScale(QPointF(newScaleX, m_dragStartScale.y()));
+                    update();
+                }
             }
         }
         return;
@@ -378,7 +399,7 @@ void CollageCanvas::mouseReleaseEvent(QMouseEvent* /*event*/)
         int editIndex = m_document->editingSlotIndex();
         if (auto* slot = m_document->slotAt(editIndex)) {
             QPointF currentOffset = slot->imageOffset();
-            double currentScale = slot->imageScale();
+            QPointF currentScale = slot->imageScale();
 
             // Push undo command if moved
             if (currentOffset != m_dragStartOffset || currentScale != m_dragStartScale) {
@@ -424,9 +445,9 @@ void CollageCanvas::wheelEvent(QWheelEvent* event)
     // If hovering over or editing the active slot, scale the image directly
     if (activeEdit != -1 && m_document->slotAt(activeEdit)->containsPoint(docPos, m_document->canvasSize())) {
         auto* slot = m_document->slotAt(activeEdit);
-        double oldScale = slot->imageScale();
+        QPointF oldScale = slot->imageScale();
         double factor = (event->angleDelta().y() > 0) ? 1.08 : 0.92;
-        double newScale = std::clamp(oldScale * factor, 0.05, 20.0);
+        QPointF newScale = QPointF(std::clamp(oldScale.x() * factor, 0.05, 20.0), std::clamp(oldScale.y() * factor, 0.05, 20.0));
 
         slot->setImageScale(newScale);
         m_history->push(new Core::TransformSlotImageCommand(
@@ -493,7 +514,8 @@ void CollageCanvas::keyReleaseEvent(QKeyEvent* event)
 void CollageCanvas::dragEnterEvent(QDragEnterEvent* event)
 {
     if (event->mimeData()->hasUrls() || event->mimeData()->hasFormat("application/x-photocolla-slot")) {
-        event->acceptProposedAction();
+        event->setDropAction(Qt::CopyAction);
+        event->accept();
         
         // Cache the preview image
         if (event->mimeData()->hasUrls() && !event->mimeData()->urls().isEmpty()) {
@@ -512,7 +534,8 @@ void CollageCanvas::dragEnterEvent(QDragEnterEvent* event)
 void CollageCanvas::dragMoveEvent(QDragMoveEvent* event)
 {
     if (event->mimeData()->hasUrls() || event->mimeData()->hasFormat("application/x-photocolla-slot")) {
-        event->acceptProposedAction();
+        event->setDropAction(Qt::CopyAction);
+        event->accept();
         QPointF docPos = mapViewportToDocument(event->position());
         int hoverSlot = m_document->findSlotAt(docPos);
         
@@ -563,7 +586,8 @@ void CollageCanvas::dropEvent(QDropEvent* event)
                 m_history->push(new Core::SetSlotImageCommand(m_document, targetSlotIndex, srcPath, srcPix));
             }
         }
-        event->acceptProposedAction();
+        event->setDropAction(Qt::CopyAction);
+        event->accept();
         return;
     }
 
@@ -587,7 +611,8 @@ void CollageCanvas::dropEvent(QDropEvent* event)
         if (!addedFiles.isEmpty()) {
             emit filesDroppedOnCanvas(addedFiles);
         }
-        event->acceptProposedAction();
+        event->setDropAction(Qt::CopyAction);
+        event->accept();
     }
 }
 
@@ -598,12 +623,12 @@ QRectF CollageCanvas::getImageRectInDocument(const Core::Slot* slotItem) const
     if (!slotItem || !slotItem->hasImage()) return {};
     QRectF innerRect = slotItem->calculateInnerRect(m_document->canvasSize());
     QPointF center = innerRect.center();
-    double scale = slotItem->imageScale();
+    QPointF scale = slotItem->imageScale();
     QPointF offset = slotItem->imageOffset();
     QSizeF imgSize = slotItem->pixmap().size();
     
-    double w = imgSize.width() * scale;
-    double h = imgSize.height() * scale;
+    double w = imgSize.width() * scale.x();
+    double h = imgSize.height() * scale.y();
     double x = center.x() + offset.x() - w / 2.0;
     double y = center.y() + offset.y() - h / 2.0;
     
@@ -622,15 +647,19 @@ int CollageCanvas::hitTestTransformHandles(const Core::Slot* slotItem, const QPo
     QRectF imgRect = getImageRectInDocument(slotItem);
     if (imgRect.isEmpty()) return -1;
     
-    QPointF corners[4] = {
+    QPointF handles[8] = {
         imgRect.topLeft(),
         imgRect.topRight(),
         imgRect.bottomRight(),
-        imgRect.bottomLeft()
+        imgRect.bottomLeft(),
+        QPointF(imgRect.center().x(), imgRect.top()),
+        QPointF(imgRect.right(), imgRect.center().y()),
+        QPointF(imgRect.center().x(), imgRect.bottom()),
+        QPointF(imgRect.left(), imgRect.center().y())
     };
     
-    for (int i = 0; i < 4; ++i) {
-        if (getHandleRectInViewport(corners[i]).contains(viewportPos)) {
+    for (int i = 0; i < 8; ++i) {
+        if (getHandleRectInViewport(handles[i]).contains(viewportPos)) {
             return i;
         }
     }

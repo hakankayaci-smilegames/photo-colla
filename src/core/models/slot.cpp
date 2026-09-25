@@ -54,7 +54,7 @@ void Slot::setImage(const QString& path, const QPixmap& pixmap)
     m_imagePath = path;
     m_pixmap = pixmap;
     m_imageOffset = QPointF(0.0, 0.0);
-    m_imageScale = 1.0;
+    m_imageScale = QPointF(1.0, 1.0);
     m_imageRotation = 0.0;
 }
 
@@ -63,7 +63,7 @@ void Slot::clearImage()
     m_imagePath.clear();
     m_pixmap = QPixmap();
     m_imageOffset = QPointF(0.0, 0.0);
-    m_imageScale = 1.0;
+    m_imageScale = QPointF(1.0, 1.0);
 }
 
 bool Slot::containsPoint(const QPointF& canvasPoint, const QSizeF& canvasSize) const
@@ -82,7 +82,7 @@ void Slot::fitImageToSlot(const QSizeF& canvasSize)
     double scaleY = inner.height() / static_cast<double>(m_pixmap.height());
 
     // Scale to cover completely (Figma / CSS object-fit: cover)
-    m_imageScale = std::max(scaleX, scaleY);
+    m_imageScale = QPointF(std::max(scaleX, scaleY), std::max(scaleX, scaleY));
     m_imageOffset = QPointF(0.0, 0.0);
 }
 

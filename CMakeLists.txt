@@ -113,10 +113,10 @@ target_link_libraries(PhotoColla PRIVATE
 enable_strict_warnings(PhotoColla)
 enable_sanitizers(PhotoColla)
 
-# Interprocedural Optimization (LTO) in Release
+# Interprocedural Optimization (LTO) in Release (Disabled on Windows/MinGW due to toolchain issues)
 include(CheckIPOSupported)
 check_ipo_supported(RESULT ipo_supported OUTPUT ipo_error)
-if(ipo_supported AND CMAKE_BUILD_TYPE STREQUAL "Release")
+if(ipo_supported AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT WIN32)
     set_property(TARGET PhotoColla PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif()
 

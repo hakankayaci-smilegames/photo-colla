@@ -82,7 +82,7 @@ private:
     QString m_imagePath;
     QPixmap m_pixmap;
     QPointF m_imageOffset{0.0, 0.0}; // Relative translation inside inner rect
-    double m_imageScale{1.0};        // Zoom multiplier
+    QPointF m_imageScale{1.0, 1.0};  // Zoom multiplier (X and Y)
     double m_imageRotation{0.0};     // Angle in degrees
 
     // Border & Spacing

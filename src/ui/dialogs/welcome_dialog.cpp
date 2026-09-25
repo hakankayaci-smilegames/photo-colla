@@ -3,6 +3,7 @@
 #include <QFileDialog>
 #include <QSettings>
 #include <QFileInfo>
+#include <QFile>
 
 namespace PhotoColla::UI {
 

@@ -46,6 +46,7 @@ static double evaluatePartition(const std::vector<ImageInfo>& items, const std::
         idx += rowCounts[r];
     }
 
+    outMaxCrop = maxCrop;
     return maxCrop;
 }
 
@@ -71,7 +72,6 @@ static std::vector<int> findBestRowPartition(const std::vector<ImageInfo>& items
             // Cost is how much this row deviates from the "ideal" height if we had uniform rows
             // But we actually want sum of rowH to be targetH.
             // Let's just use a squared error approach:
-            double error = dp[j] + rowH;
             // Wait, we want the sum to be exactly targetH. DP state doesn't track sum.
             // Let's use a simpler heuristic cost for the row.
             // Ideal row height is roughly targetH / sqrt(n).

@@ -81,8 +81,8 @@ private:
     QPointF m_dragStartPos;
     QPointF m_lastMousePos;
     QPointF m_dragStartOffset;
-    double m_dragStartScale{1.0};
-    int m_dragHandleIndex{-1}; // 0:TL, 1:TR, 2:BR, 3:BL
+    QPointF m_dragStartScale{1.0, 1.0};
+    int m_dragHandleIndex{-1}; // 0:TL, 1:TR, 2:BR, 3:BL, 4:T, 5:R, 6:B, 7:L
 
     // Drop target feedback
     int m_dropTargetSlotIndex{-1};

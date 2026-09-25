@@ -28,7 +28,7 @@ private:
     QString m_oldPath;
     QPixmap m_oldPixmap;
     QPointF m_oldOffset;
-    double m_oldScale;
+    QPointF m_oldScale;
 };
 
 /**
@@ -36,8 +36,8 @@ private:
  */
 class TransformSlotImageCommand : public QUndoCommand {
 public:
-    TransformSlotImageCommand(CollageDocument* doc, int slotIndex, const QPointF& oldOffset, double oldScale,
-                             const QPointF& newOffset, double newScale, QUndoCommand* parent = nullptr);
+    TransformSlotImageCommand(CollageDocument* doc, int slotIndex, const QPointF& oldOffset, const QPointF& oldScale,
+                             const QPointF& newOffset, const QPointF& newScale, QUndoCommand* parent = nullptr);
 
     void undo() override;
     void redo() override;
@@ -48,9 +48,9 @@ private:
     CollageDocument* m_doc;
     int m_slotIndex;
     QPointF m_oldOffset;
-    double m_oldScale;
+    QPointF m_oldScale;
     QPointF m_newOffset;
-    double m_newScale;
+    QPointF m_newScale;
 };
 
 /**

@@ -9,6 +9,8 @@
 #include <QMimeData>
 #include <QDrag>
 #include <QPainter>
+#include <QMouseEvent>
+#include <QApplication>
 
 namespace PhotoColla::UI {
 
@@ -20,6 +22,35 @@ PhotoListWidget::PhotoListWidget(QWidget* parent) : QListWidget(parent)
     setDragEnabled(true);
     setAcceptDrops(true);
     setDropIndicatorShown(true);
+    setDragDropMode(QAbstractItemView::DragDrop);
+}
+
+void PhotoListWidget::mousePressEvent(QMouseEvent* event)
+{
+    if (event->button() == Qt::LeftButton) {
+        m_dragStartPos = event->pos();
+    }
+    QListWidget::mousePressEvent(event);
+}
+
+void PhotoListWidget::mouseMoveEvent(QMouseEvent* event)
+{
+    if (!(event->buttons() & Qt::LeftButton)) {
+        QListWidget::mouseMoveEvent(event);
+        return;
+    }
+    if ((event->pos() - m_dragStartPos).manhattanLength() < QApplication::startDragDistance()) {
+        QListWidget::mouseMoveEvent(event);
+        return;
+    }
+
+    QListWidgetItem* item = itemAt(m_dragStartPos);
+    if (!item) {
+        QListWidget::mouseMoveEvent(event);
+        return;
+    }
+
+    startDrag(Qt::CopyAction);
 }
 
 void PhotoListWidget::startDrag(Qt::DropActions /*supportedActions*/)
@@ -243,6 +274,7 @@ void ToolboxPanel::addPhotoToLibrary(const QString& filePath)
     auto* item = new QListWidgetItem(icon, info.fileName());
     item->setData(Qt::UserRole, filePath);
     item->setToolTip(filePath);
+    item->setFlags(item->flags() | Qt::ItemIsDragEnabled | Qt::ItemIsSelectable | Qt::ItemIsEnabled);
     m_photoListWidget->addItem(item);
 }
 

@@ -21,6 +21,8 @@ public:
     explicit PhotoListWidget(QWidget* parent = nullptr);
 
 protected:
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
     void startDrag(Qt::DropActions supportedActions) override;
     void dragEnterEvent(QDragEnterEvent* event) override;
     void dragMoveEvent(QDragMoveEvent* event) override;
@@ -28,6 +30,9 @@ protected:
 
 signals:
     void filesDropped(const QStringList& files);
+
+private:
+    QPoint m_dragStartPos;
 };
 
 /**

@@ -104,7 +104,7 @@ void SlotRenderer::drawSlotImageNormal(
     if (std::abs(slot.imageRotation()) > 0.001) {
         painter.rotate(slot.imageRotation());
     }
-    painter.scale(slot.imageScale(), slot.imageScale());
+    painter.scale(slot.imageScale().x(), slot.imageScale().y());
 
     QRectF targetRect(-pixmap.width() / 2.0, -pixmap.height() / 2.0, pixmap.width(), pixmap.height());
     painter.drawPixmap(targetRect.toRect(), pixmap);
@@ -133,7 +133,7 @@ void SlotRenderer::drawSlotImageEditing(
     if (std::abs(slot.imageRotation()) > 0.001) {
         painter.rotate(slot.imageRotation());
     }
-    painter.scale(slot.imageScale(), slot.imageScale());
+    painter.scale(slot.imageScale().x(), slot.imageScale().y());
 
     QRectF targetRect(-pixmap.width() / 2.0, -pixmap.height() / 2.0, pixmap.width(), pixmap.height());
     painter.drawPixmap(targetRect.toRect(), pixmap);
@@ -149,7 +149,7 @@ void SlotRenderer::drawSlotImageEditing(
     if (std::abs(slot.imageRotation()) > 0.001) {
         painter.rotate(slot.imageRotation());
     }
-    painter.scale(slot.imageScale(), slot.imageScale());
+    painter.scale(slot.imageScale().x(), slot.imageScale().y());
 
     painter.drawPixmap(targetRect.toRect(), pixmap);
     painter.restore();

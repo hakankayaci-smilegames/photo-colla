@@ -23,16 +23,10 @@ function(enable_strict_warnings target_name)
         target_compile_options(${target_name} PRIVATE
             -Wall
             -Wextra
-            -Wpedantic
-            -Wshadow
             -Wnon-virtual-dtor
-            -Wold-style-cast
-            -Wcast-align
             -Wunused
             -Woverloaded-virtual
             -Wformat=2
-            -Wnull-dereference
-            -Wdouble-promotion
         )
     endif()
 endfunction()

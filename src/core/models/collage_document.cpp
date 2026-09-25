@@ -247,7 +247,8 @@ bool CollageDocument::saveProject(const QString& filePath)
         offset["y"] = slot.imageOffset().y();
         slotObj["image_offset"] = offset;
         
-        slotObj["image_scale"] = slot.imageScale();
+        slotObj["image_scale_x"] = slot.imageScale().x();
+        slotObj["image_scale_y"] = slot.imageScale().y();
         slotObj["image_rotation"] = slot.imageRotation();
 
         slotObj["margin"] = slot.margin();
@@ -306,7 +307,13 @@ bool CollageDocument::loadProject(const QString& filePath)
 
         QJsonObject offset = slotObj["image_offset"].toObject();
         slot.setImageOffset(QPointF(offset["x"].toDouble(), offset["y"].toDouble()));
-        slot.setImageScale(slotObj["image_scale"].toDouble(1.0));
+        
+        if (slotObj.contains("image_scale_x")) {
+            slot.setImageScale(QPointF(slotObj["image_scale_x"].toDouble(1.0), slotObj["image_scale_y"].toDouble(1.0)));
+        } else {
+            slot.setImageScale(QPointF(slotObj["image_scale"].toDouble(1.0), slotObj["image_scale"].toDouble(1.0)));
+        }
+        
         slot.setImageRotation(slotObj["image_rotation"].toDouble(0.0));
 
         slot.setMargin(slotObj["margin"].toDouble(6.0));

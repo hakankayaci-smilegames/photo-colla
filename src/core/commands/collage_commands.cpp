@@ -10,7 +10,7 @@ SetSlotImageCommand::SetSlotImageCommand(CollageDocument* doc, int slotIndex, co
     , m_slotIndex(slotIndex)
     , m_newPath(newPath)
     , m_newPixmap(newPixmap)
-    , m_oldScale(1.0)
+    , m_oldScale(QPointF(1.0, 1.0))
 {
     setText(QObject::tr("Set Slot Image"));
     if (auto* slot = m_doc->slotAt(m_slotIndex)) {
@@ -42,8 +42,8 @@ void SetSlotImageCommand::redo()
 
 // --- TransformSlotImageCommand ---
 TransformSlotImageCommand::TransformSlotImageCommand(CollageDocument* doc, int slotIndex,
-                                                     const QPointF& oldOffset, double oldScale,
-                                                     const QPointF& newOffset, double newScale,
+                                                     const QPointF& oldOffset, const QPointF& oldScale,
+                                                     const QPointF& newOffset, const QPointF& newScale,
                                                      QUndoCommand* parent)
     : QUndoCommand(parent)
     , m_doc(doc)
