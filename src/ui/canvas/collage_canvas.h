@@ -47,6 +47,7 @@ protected:
     // Drag and Drop
     void dragEnterEvent(QDragEnterEvent* event) override;
     void dragMoveEvent(QDragMoveEvent* event) override;
+    void dragLeaveEvent(QDragLeaveEvent* event) override;
     void dropEvent(QDropEvent* event) override;
 
 private:
@@ -57,7 +58,8 @@ private:
     enum class DragState {
         None,
         PanningCanvas,
-        TransformingSlotImage
+        TransformingSlotImage,
+        DraggingSlotToSlot
     };
 
     Core::CollageDocument* m_document;
@@ -70,9 +72,14 @@ private:
 
     // Drag interaction tracking
     DragState m_dragState{DragState::None};
+    QPointF m_dragStartPos;
     QPointF m_lastMousePos;
     QPointF m_dragStartOffset;
     double m_dragStartScale{1.0};
+
+    // Drop target feedback
+    int m_dropTargetSlotIndex{-1};
+    int m_dragSourceSlotIndex{-1};
 };
 
 } // namespace PhotoColla::UI

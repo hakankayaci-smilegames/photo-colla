@@ -5,9 +5,91 @@
 #include <QFileInfo>
 #include <QIcon>
 #include <QScrollArea>
+#include <QUrl>
+#include <QMimeData>
+#include <QDrag>
+#include <QPainter>
 
 namespace PhotoColla::UI {
 
+// ---------------------------------------------------------
+// PhotoListWidget Implementation
+// ---------------------------------------------------------
+PhotoListWidget::PhotoListWidget(QWidget* parent) : QListWidget(parent)
+{
+    setDragEnabled(true);
+    setAcceptDrops(true);
+    setDropIndicatorShown(true);
+}
+
+void PhotoListWidget::startDrag(Qt::DropActions /*supportedActions*/)
+{
+    QList<QListWidgetItem*> selected = selectedItems();
+    if (selected.isEmpty()) return;
+
+    QList<QUrl> urls;
+    for (auto* item : selected) {
+        QString filePath = item->data(Qt::UserRole).toString();
+        urls.append(QUrl::fromLocalFile(filePath));
+    }
+
+    auto* mimeData = new QMimeData();
+    mimeData->setUrls(urls);
+
+    auto* drag = new QDrag(this);
+    drag->setMimeData(mimeData);
+
+    // Create a sleek ghost thumbnail for the drag operation
+    QPixmap iconPixmap = selected.first()->icon().pixmap(72, 72);
+    QPixmap dragPixmap(iconPixmap.size());
+    dragPixmap.fill(Qt::transparent);
+    QPainter painter(&dragPixmap);
+    painter.setOpacity(0.85);
+    painter.drawPixmap(0, 0, iconPixmap);
+    painter.setPen(QPen(QColor(56, 189, 248), 2.0));
+    painter.drawRoundedRect(dragPixmap.rect().adjusted(1, 1, -1, -1), 4, 4);
+    painter.end();
+
+    drag->setPixmap(dragPixmap);
+    drag->setHotSpot(dragPixmap.rect().center());
+
+    drag->exec(Qt::CopyAction);
+}
+
+void PhotoListWidget::dragEnterEvent(QDragEnterEvent* event)
+{
+    if (event->mimeData()->hasUrls()) {
+        event->acceptProposedAction();
+    }
+}
+
+void PhotoListWidget::dragMoveEvent(QDragMoveEvent* event)
+{
+    if (event->mimeData()->hasUrls()) {
+        event->acceptProposedAction();
+    }
+}
+
+void PhotoListWidget::dropEvent(QDropEvent* event)
+{
+    const QMimeData* mime = event->mimeData();
+    if (mime->hasUrls()) {
+        QStringList filePaths;
+        for (const QUrl& url : mime->urls()) {
+            if (url.isLocalFile()) {
+                filePaths.append(url.toLocalFile());
+            }
+        }
+        if (!filePaths.isEmpty()) {
+            emit filesDropped(filePaths);
+        }
+        event->acceptProposedAction();
+    }
+}
+
+// ---------------------------------------------------------
+// ToolboxPanel Implementation
+// ---------------------------------------------------------
 ToolboxPanel::ToolboxPanel(QWidget* parent)
     : QWidget(parent)
 {
@@ -44,6 +126,18 @@ void ToolboxPanel::setupUi()
 
     auto* tab1Layout = new QVBoxLayout(templatesContainer);
     tab1Layout->setContentsMargins(0, 0, 0, 0);
+
+    auto* autoLayoutContainer = new QWidget();
+    auto* autoLayoutContLayout = new QVBoxLayout(autoLayoutContainer);
+    autoLayoutContLayout->setContentsMargins(8, 8, 8, 0);
+    auto* autoLayoutBtn = new QPushButton(tr("✨ Auto Smart Collage..."), this);
+    autoLayoutBtn->setObjectName("primaryButton");
+    autoLayoutBtn->setFixedHeight(36);
+    autoLayoutBtn->setStyleSheet("background-color: #3b82f6; color: white; font-weight: bold; border-radius: 4px;");
+    connect(autoLayoutBtn, &QPushButton::clicked, this, &ToolboxPanel::autoLayoutRequested);
+    autoLayoutContLayout->addWidget(autoLayoutBtn);
+
+    tab1Layout->addWidget(autoLayoutContainer);
     tab1Layout->addWidget(templatesScroll);
 
     // Tab 2: Photos Library
@@ -58,16 +152,22 @@ void ToolboxPanel::setupUi()
     connect(importBtn, &QPushButton::clicked, this, &ToolboxPanel::importPhotosRequested);
     photosLayout->addWidget(importBtn);
 
-    m_photoListWidget = new QListWidget(this);
+    m_photoListWidget = new PhotoListWidget(this);
     m_photoListWidget->setIconSize(QSize(72, 72));
     m_photoListWidget->setViewMode(QListView::IconMode);
     m_photoListWidget->setMovement(QListView::Static);
     m_photoListWidget->setResizeMode(QListWidget::Adjust);
     m_photoListWidget->setSpacing(8);
+    m_photoListWidget->setSelectionMode(QAbstractItemView::ExtendedSelection);
     m_photoListWidget->setStyleSheet("background-color: #17171a; border: 1px solid #2d2d32; border-radius: 6px;");
     connect(m_photoListWidget, &QListWidget::itemDoubleClicked, this, [this](QListWidgetItem* item) {
         if (item) {
             emit photoChosen(item->data(Qt::UserRole).toString());
+        }
+    });
+    connect(m_photoListWidget, &PhotoListWidget::filesDropped, this, [this](const QStringList& files) {
+        for (const QString& file : files) {
+            addPhotoToLibrary(file);
         }
     });
     photosLayout->addWidget(m_photoListWidget);

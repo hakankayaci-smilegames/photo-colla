@@ -2,6 +2,7 @@
 #include "dialogs/export_dialog.h"
 #include "export/exporter.h"
 #include "core/commands/collage_commands.h"
+#include "core/models/auto_layout_engine.h"
 
 #include <QMenuBar>
 #include <QToolBar>
@@ -168,6 +169,7 @@ void MainWindow::setupConnections()
         m_document->createGridTemplate(r, c);
     });
     connect(m_toolboxPanel, &ToolboxPanel::importPhotosRequested, this, &MainWindow::onImportPhotos);
+    connect(m_toolboxPanel, &ToolboxPanel::autoLayoutRequested, this, &MainWindow::onAutoLayoutRequested);
     connect(m_toolboxPanel, &ToolboxPanel::photoChosen, this, &MainWindow::onPhotoChosenFromLibrary);
 
     connect(m_toolboxPanel, &ToolboxPanel::fitActiveSlotRequested, this, [this]() {
@@ -235,6 +237,24 @@ void MainWindow::onImportPhotos()
 
     for (const auto& file : files) {
         m_toolboxPanel->addPhotoToLibrary(file);
+    }
+}
+
+void MainWindow::onAutoLayoutRequested()
+{
+    QStringList files = QFileDialog::getOpenFileNames(
+        this,
+        tr("Select Photos for Auto Collage"),
+        QString(),
+        tr("Images (*.png *.jpg *.jpeg *.webp *.bmp *.tiff)")
+    );
+
+    if (files.isEmpty()) return;
+
+    if (Core::AutoLayoutEngine::generateAndApply(m_document.get(), files)) {
+        // Clear undo stack since we completely rewrote slots without commands
+        m_history->clear();
+        emit m_document->documentChanged();
     }
 }
 

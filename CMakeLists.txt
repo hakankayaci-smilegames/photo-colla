@@ -47,6 +47,8 @@ find_package(Qt6 6.4 REQUIRED COMPONENTS
 set(CORE_SOURCES
     src/core/models/slot.h
     src/core/models/slot.cpp
+    src/core/models/auto_layout_engine.h
+    src/core/models/auto_layout_engine.cpp
     src/core/models/collage_document.h
     src/core/models/collage_document.cpp
     src/core/commands/collage_commands.h

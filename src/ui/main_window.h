@@ -30,6 +30,7 @@ private slots:
     void onRedo();
     void onExport();
     void onImportPhotos();
+    void onAutoLayoutRequested();
     void onSlotImageRequested(int slotIndex);
     void onPhotoChosenFromLibrary(const QString& filePath);
     void onSelectionChanged(int slotIndex);

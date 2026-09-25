@@ -68,9 +68,10 @@ photo-colla/
 ├── src/
 │   ├── main.cpp                    # Uygulama başlangıç ve DPI yapılandırması
 │   ├── core/                       # Saf iş mantığı (UI'dan bağımsız)
-│   │   ├── models/                 # Slot, Doküman ve Transform veri yapıları
+│   │   ├── models/                 # Slot, Doküman, Layout motoru ve Transform veri yapıları
 │   │   │   ├── slot.h/.cpp
-│   │   │   └── collage_document.h/.cpp
+│   │   │   ├── collage_document.h/.cpp
+│   │   │   └── auto_layout_engine.h/.cpp # Dinamik aspect-ratio korumalı otomasyon
 │   │   ├── commands/               # QUndoCommand tabanlı geri/ileri alınabilir komutlar
 │   │   │   └── collage_commands.h/.cpp
 │   │   └── history/                # Undo/Redo yığını yöneticisi
@@ -136,6 +137,16 @@ Her komut atomik, serializable ve tersine çevrilebilir (`undo()` ve `redo()`).
 - [x] **ADIM 3:** `CollageCanvas` sınıfı, GPU destekli Slot / Clipping Mask ve Out-of-bounds %30 alpha render motoru.
 - [x] **ADIM 4:** Sağ panel kontrollerinin (Margin, Radius, Border, Stroke) dinamik Signal/Slot ve Command entegrasyonu.
 - [x] **ADIM 5:** High-res ve 300 DPI Export motoru (PNG, JPG, WebP).
+- [x] **ADIM 6:** `AutoLayoutEngine` ile fotoğrafların aspect-ratio (en/boy oranı) değerlerini analiz edip kırpmayı (crop) minimize eden akıllı dinamik bsp/masonry grid algoritması eklendi.
+
+---
+
+## 7. Auto Layout (Smart Collage) Mekaniği
+
+Kullanıcının yüklediği fotoğrafların orijinal oranlarına göre matematiksel hesaplama yapar:
+1. Yüklenen fotoğrafların aspect-ratio'ları hesaplanır.
+2. Dinamik Programlama (DP) / Heuristic yaklaşımlarla yatay (satır tabanlı) veya dikey (sütun tabanlı) olacak şekilde en az cropping/bozulma yaratacak bölütleme yapılır.
+3. Bulunan bu bölütleme, oransal olarak normalleştirilmiş (0.0 - 1.0) koordinatlara dönüştürülür ve hazır şablona gerek kalmadan tamamen dinamik yeni Slot'lar üretilir.
 
 ---
 

@@ -6,7 +6,11 @@
 #include <QWheelEvent>
 #include <QKeyEvent>
 #include <QDragEnterEvent>
+#include <QDragMoveEvent>
+#include <QDragLeaveEvent>
+#include <QDropEvent>
 #include <QMimeData>
+#include <QDrag>
 #include <QUrl>
 #include <QFileDialog>
 #include <algorithm>
@@ -146,12 +150,26 @@ void CollageCanvas::paintEvent(QPaintEvent* /*event*/)
         SlotRenderer::renderSlot(painter, slotItems[static_cast<size_t>(activeEdit)], docSize, true, true);
     }
 
+    // Pass 3: Drop Target Highlight
+    if (m_dropTargetSlotIndex >= 0 && m_dropTargetSlotIndex < static_cast<int>(slotItems.size())) {
+        auto* slot = m_document->slotAt(m_dropTargetSlotIndex);
+        if (slot) {
+            QPainterPath clipPath = slot->calculateClipPath(docSize);
+            painter.save();
+            painter.setPen(QPen(QColor(56, 189, 248), 4.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+            painter.setBrush(QColor(56, 189, 248, 40));
+            painter.drawPath(clipPath);
+            painter.restore();
+        }
+    }
+
     painter.restore();
 }
 
 void CollageCanvas::mousePressEvent(QMouseEvent* event)
 {
     m_lastMousePos = event->position();
+    m_dragStartPos = event->position();
 
     // Middle button or Space+Left -> Pan Canvas
     if (event->button() == Qt::MiddleButton || (m_spacePressed && event->button() == Qt::LeftButton)) {
@@ -166,7 +184,12 @@ void CollageCanvas::mousePressEvent(QMouseEvent* event)
 
         if (clickedSlot != -1) {
             int currentEdit = m_document->editingSlotIndex();
-            if (currentEdit == clickedSlot) {
+            
+            if (event->modifiers() & Qt::AltModifier) {
+                // Explicit slot swap drag
+                m_dragState = DragState::DraggingSlotToSlot;
+                m_dragSourceSlotIndex = clickedSlot;
+            } else if (currentEdit == clickedSlot) {
                 // Dragging image inside active slot
                 m_dragState = DragState::TransformingSlotImage;
                 if (auto* slot = m_document->slotAt(clickedSlot)) {
@@ -175,8 +198,10 @@ void CollageCanvas::mousePressEvent(QMouseEvent* event)
                 }
                 setCursor(Qt::SizeAllCursor);
             } else {
-                // Select slot
+                // Select slot and prepare for possible swap drag
                 m_document->setSelectedSlotIndex(clickedSlot);
+                m_dragState = DragState::DraggingSlotToSlot;
+                m_dragSourceSlotIndex = clickedSlot;
             }
         } else {
             // Click outside clears selection and edit mode
@@ -210,6 +235,39 @@ void CollageCanvas::mouseMoveEvent(QMouseEvent* event)
             update();
         }
         return;
+    }
+
+    if (m_dragState == DragState::DraggingSlotToSlot && (event->buttons() & Qt::LeftButton)) {
+        if ((currentPos - m_dragStartPos).manhattanLength() > 5) {
+            auto* sourceSlot = m_document->slotAt(m_dragSourceSlotIndex);
+            if (sourceSlot && sourceSlot->hasImage()) {
+                auto* mimeData = new QMimeData();
+                mimeData->setData("application/x-photocolla-slot", QByteArray::number(m_dragSourceSlotIndex));
+                
+                auto* drag = new QDrag(this);
+                drag->setMimeData(mimeData);
+                
+                // Ghost thumbnail for slot dragging
+                QPixmap dragPix = sourceSlot->pixmap().scaled(120, 120, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                QPixmap ghostPix(dragPix.size());
+                ghostPix.fill(Qt::transparent);
+                QPainter p(&ghostPix);
+                p.setOpacity(0.85);
+                p.drawPixmap(0, 0, dragPix);
+                p.setPen(QPen(QColor(56, 189, 248), 2.0));
+                p.drawRoundedRect(ghostPix.rect().adjusted(1, 1, -1, -1), 4, 4);
+                p.end();
+                
+                drag->setPixmap(ghostPix);
+                drag->setHotSpot(ghostPix.rect().center());
+                
+                m_dragState = DragState::None;
+                drag->exec(Qt::MoveAction);
+                return;
+            } else {
+                m_dragState = DragState::None; // Slot is empty, cancel drag
+            }
+        }
     }
 
     // Cursor feedback
@@ -351,31 +409,86 @@ void CollageCanvas::keyReleaseEvent(QKeyEvent* event)
 
 void CollageCanvas::dragEnterEvent(QDragEnterEvent* event)
 {
-    if (event->mimeData()->hasUrls()) {
+    if (event->mimeData()->hasUrls() || event->mimeData()->hasFormat("application/x-photocolla-slot")) {
         event->acceptProposedAction();
     }
 }
 
 void CollageCanvas::dragMoveEvent(QDragMoveEvent* event)
 {
-    event->acceptProposedAction();
+    if (event->mimeData()->hasUrls() || event->mimeData()->hasFormat("application/x-photocolla-slot")) {
+        event->acceptProposedAction();
+        QPointF docPos = mapViewportToDocument(event->position());
+        int hoverSlot = m_document->findSlotAt(docPos);
+        
+        if (hoverSlot != m_dropTargetSlotIndex) {
+            m_dropTargetSlotIndex = hoverSlot;
+            update();
+        }
+    }
+}
+
+void CollageCanvas::dragLeaveEvent(QDragLeaveEvent* event)
+{
+    if (m_dropTargetSlotIndex != -1) {
+        m_dropTargetSlotIndex = -1;
+        update();
+    }
+    event->accept();
 }
 
 void CollageCanvas::dropEvent(QDropEvent* event)
 {
+    int targetSlotIndex = m_dropTargetSlotIndex;
+    m_dropTargetSlotIndex = -1;
+    update();
+
+    if (targetSlotIndex == -1) {
+        return; // Dropped outside any valid slot
+    }
+
     const QMimeData* mimeData = event->mimeData();
-    if (mimeData->hasUrls() && !mimeData->urls().isEmpty()) {
-        QString filePath = mimeData->urls().first().toLocalFile();
-        QPixmap pixmap(filePath);
-        if (!pixmap.isNull()) {
-            QPointF docPos = mapViewportToDocument(event->position());
-            int targetSlot = m_document->findSlotAt(docPos);
-            if (targetSlot != -1) {
-                m_history->push(new Core::SetSlotImageCommand(m_document, targetSlot, filePath, pixmap));
+    
+    // Handle Slot-to-Slot Drag (Swap/Move)
+    if (mimeData->hasFormat("application/x-photocolla-slot")) {
+        int sourceSlotIndex = mimeData->data("application/x-photocolla-slot").toInt();
+        if (sourceSlotIndex != targetSlotIndex && sourceSlotIndex >= 0 && targetSlotIndex >= 0) {
+            auto* srcSlot = m_document->slotAt(sourceSlotIndex);
+            auto* dstSlot = m_document->slotAt(targetSlotIndex);
+            if (srcSlot && dstSlot) {
+                // To keep it simple but powerful, we'll execute two SetSlotImageCommands.
+                // Ideally this would be a single macro command.
+                QString srcPath = srcSlot->imagePath();
+                QPixmap srcPix = srcSlot->pixmap();
+                
+                QString dstPath = dstSlot->imagePath();
+                QPixmap dstPix = dstSlot->pixmap();
+                
+                m_history->push(new Core::SetSlotImageCommand(m_document, sourceSlotIndex, dstPath, dstPix));
+                m_history->push(new Core::SetSlotImageCommand(m_document, targetSlotIndex, srcPath, srcPix));
             }
         }
+        event->acceptProposedAction();
+        return;
     }
-    event->acceptProposedAction();
+
+    // Handle External / Toolbox URLs Drop (Multi-Photo Sequential Fill)
+    if (mimeData->hasUrls() && !mimeData->urls().isEmpty()) {
+        int currentSlot = targetSlotIndex;
+        int maxSlots = m_document->slotCount();
+        
+        for (const QUrl& url : mimeData->urls()) {
+            if (!url.isLocalFile()) continue;
+            QString filePath = url.toLocalFile();
+            QPixmap pixmap(filePath);
+            
+            if (!pixmap.isNull() && currentSlot < maxSlots) {
+                m_history->push(new Core::SetSlotImageCommand(m_document, currentSlot, filePath, pixmap));
+                currentSlot++;
+            }
+        }
+        event->acceptProposedAction();
+    }
 }
 
 } // namespace PhotoColla::UI

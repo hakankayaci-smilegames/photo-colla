@@ -33,13 +33,43 @@ jobs:
           cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
           cmake --build build
 
-      - name: Package Windows Standalone Application
+      - name: Package Windows Standalone Application & Resolve All DLLs
         shell: msys2 {0}
         run: |
           mkdir -p package
           cp build/PhotoColla.exe package/
           windeployqt --no-translations --compiler-runtime package/PhotoColla.exe
-          cp /ucrt64/bin/libgcc_s_seh-1.dll /ucrt64/bin/libstdc++-6.dll /ucrt64/bin/libwinpthread-1.dll package/ 2>/dev/null || true
+
+          # Recursive dependency resolver to copy ALL missing MSYS2 DLLs
+          python3 -c "
+          import os, subprocess, shutil
+
+          dest = 'package'
+          for iteration in range(10):
+              new_copied = 0
+              for root, dirs, files in os.walk(dest):
+                  for file in files:
+                      if file.endswith('.exe') or file.endswith('.dll'):
+                          filepath = os.path.join(root, file)
+                          try:
+                              out = subprocess.check_output(['ldd', filepath], text=True, stderr=subprocess.DEVNULL)
+                              for line in out.splitlines():
+                                  parts = line.strip().split(' => ')
+                                  if len(parts) == 2:
+                                      dll_name = parts[0].strip()
+                                      dll_path = parts[1].split(' ')[0].strip()
+                                      if dll_path.startswith('/ucrt64/') and os.path.exists(dll_path):
+                                          target = os.path.join(dest, dll_name)
+                                          if not os.path.exists(target):
+                                              print(f'Copying missing runtime DLL: {dll_name}')
+                                              shutil.copy2(dll_path, target)
+                                              new_copied += 1
+                          except Exception:
+                              pass
+              if new_copied == 0:
+                  print(f'All transitive DLL dependencies resolved successfully in pass {iteration + 1}!')
+                  break
+          "
 
       - name: Compress into Zip Archive
         shell: pwsh
