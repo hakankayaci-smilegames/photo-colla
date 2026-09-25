@@ -264,6 +264,10 @@ void MainWindow::onAutoLayoutRequested()
 
     if (files.isEmpty()) return;
 
+    for (const auto& file : files) {
+        m_toolboxPanel->addPhotoToLibrary(file);
+    }
+
     if (Core::AutoLayoutEngine::generateAndApply(m_document.get(), files)) {
         // Clear undo stack since we completely rewrote slots without commands
         m_history->clear();

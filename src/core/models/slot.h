@@ -42,8 +42,9 @@ public:
     [[nodiscard]] QPointF imageOffset() const { return m_imageOffset; }
     void setImageOffset(const QPointF& offset) { m_imageOffset = offset; }
 
-    [[nodiscard]] double imageScale() const { return m_imageScale; }
-    void setImageScale(double scale) { m_imageScale = scale; }
+    [[nodiscard]] QPointF imageScale() const { return m_imageScale; }
+    void setImageScale(const QPointF& scale) { m_imageScale = scale; }
+    void setImageScale(double scale) { m_imageScale = QPointF(scale, scale); }
 
     [[nodiscard]] double imageRotation() const { return m_imageRotation; }
     void setImageRotation(double degrees) { m_imageRotation = degrees; }

@@ -59,9 +59,14 @@ private:
     enum class DragState {
         None,
         PanningCanvas,
-        TransformingSlotImage,
+        TransformingSlotImageMove,
+        TransformingSlotImageScale,
         DraggingSlotToSlot
     };
+
+    [[nodiscard]] QRectF getImageRectInDocument(const Core::Slot* slotItem) const;
+    [[nodiscard]] QRectF getHandleRectInViewport(const QPointF& cornerDocPos) const;
+    int hitTestTransformHandles(const Core::Slot* slotItem, const QPointF& viewportPos) const;
 
     Core::CollageDocument* m_document;
     Core::CommandHistory* m_history;
@@ -77,6 +82,7 @@ private:
     QPointF m_lastMousePos;
     QPointF m_dragStartOffset;
     double m_dragStartScale{1.0};
+    int m_dragHandleIndex{-1}; // 0:TL, 1:TR, 2:BR, 3:BL
 
     // Drop target feedback
     int m_dropTargetSlotIndex{-1};

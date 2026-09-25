@@ -228,6 +228,13 @@ void ToolboxPanel::createTemplateCards()
 
 void ToolboxPanel::addPhotoToLibrary(const QString& filePath)
 {
+    // Prevent duplicates
+    for (int i = 0; i < m_photoListWidget->count(); ++i) {
+        if (m_photoListWidget->item(i)->data(Qt::UserRole).toString() == filePath) {
+            return; // Already exists
+        }
+    }
+
     QFileInfo info(filePath);
     QPixmap thumb(filePath);
     if (thumb.isNull()) return;

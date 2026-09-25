@@ -148,6 +148,32 @@ void CollageCanvas::paintEvent(QPaintEvent* /*event*/)
     // Pass 2: Render active editing slot last so out-of-bounds alpha floats cleanly on top
     if (activeEdit >= 0 && activeEdit < static_cast<int>(slotItems.size())) {
         SlotRenderer::renderSlot(painter, slotItems[static_cast<size_t>(activeEdit)], docSize, true, true);
+        
+        // Draw transform handles
+        auto* activeSlot = m_document->slotAt(activeEdit);
+        if (activeSlot && activeSlot->hasImage()) {
+            QRectF imgRect = getImageRectInDocument(activeSlot);
+            
+            painter.save();
+            painter.setWorldTransform(QTransform()); // Reset to viewport coords for pixel-perfect handles
+            
+            // Draw image bounding box
+            QPointF tl = mapDocumentToViewport(imgRect.topLeft());
+            QPointF br = mapDocumentToViewport(imgRect.bottomRight());
+            painter.setPen(QPen(QColor(255, 255, 255, 200), 1.0, Qt::DashLine));
+            painter.setBrush(Qt::NoBrush);
+            painter.drawRect(QRectF(tl, br));
+            
+            // Draw 4 handles
+            painter.setPen(QPen(QColor(0, 0, 0), 1.0));
+            painter.setBrush(QColor(255, 255, 255));
+            QPointF corners[4] = {imgRect.topLeft(), imgRect.topRight(), imgRect.bottomRight(), imgRect.bottomLeft()};
+            for (int i = 0; i < 4; ++i) {
+                painter.drawRect(getHandleRectInViewport(corners[i]));
+            }
+            
+            painter.restore();
+        }
     }
 
     // Pass 3: Drop Target Highlight & Live Preview
@@ -201,11 +227,25 @@ void CollageCanvas::mousePressEvent(QMouseEvent* event)
     }
 
     if (event->button() == Qt::LeftButton) {
+        int currentEdit = m_document->editingSlotIndex();
+        if (currentEdit != -1) {
+            if (auto* slot = m_document->slotAt(currentEdit)) {
+                int handleIdx = hitTestTransformHandles(slot, event->position());
+                if (handleIdx != -1) {
+                    m_dragState = DragState::TransformingSlotImageScale;
+                    m_dragHandleIndex = handleIdx;
+                    m_dragStartOffset = slot->imageOffset();
+                    m_dragStartScale = slot->imageScale();
+                    return;
+                }
+            }
+        }
+
         QPointF docPos = mapViewportToDocument(event->position());
         int clickedSlot = m_document->findSlotAt(docPos);
 
         if (clickedSlot != -1) {
-            int currentEdit = m_document->editingSlotIndex();
+            currentEdit = m_document->editingSlotIndex();
             
             if (event->modifiers() & Qt::AltModifier) {
                 // Explicit slot swap drag
@@ -213,7 +253,7 @@ void CollageCanvas::mousePressEvent(QMouseEvent* event)
                 m_dragSourceSlotIndex = clickedSlot;
             } else if (currentEdit == clickedSlot) {
                 // Dragging image inside active slot
-                m_dragState = DragState::TransformingSlotImage;
+                m_dragState = DragState::TransformingSlotImageMove;
                 if (auto* slot = m_document->slotAt(clickedSlot)) {
                     m_dragStartOffset = slot->imageOffset();
                     m_dragStartScale = slot->imageScale();
@@ -248,13 +288,34 @@ void CollageCanvas::mouseMoveEvent(QMouseEvent* event)
         return;
     }
 
-    if (m_dragState == DragState::TransformingSlotImage) {
+    if (m_dragState == DragState::TransformingSlotImageMove) {
         int editIndex = m_document->editingSlotIndex();
         if (auto* slot = m_document->slotAt(editIndex)) {
             // Adjust offset relative to canvas zoom
             QPointF newOffset = slot->imageOffset() + (delta / m_zoom);
             slot->setImageOffset(newOffset);
             update();
+        }
+        return;
+    }
+
+    if (m_dragState == DragState::TransformingSlotImageScale) {
+        int editIndex = m_document->editingSlotIndex();
+        if (auto* slot = m_document->slotAt(editIndex)) {
+            QRectF imgRect = getImageRectInDocument(slot);
+            QPointF center = mapDocumentToViewport(imgRect.center());
+            QPointF startVec = m_dragStartPos - center;
+            QPointF currentVec = currentPos - center;
+            
+            double startLen = std::sqrt(startVec.x()*startVec.x() + startVec.y()*startVec.y());
+            double currentLen = std::sqrt(currentVec.x()*currentVec.x() + currentVec.y()*currentVec.y());
+            
+            if (startLen > 1.0) {
+                double scaleRatio = currentLen / startLen;
+                double newScale = std::clamp(m_dragStartScale * scaleRatio, 0.05, 10.0);
+                slot->setImageScale(newScale);
+                update();
+            }
         }
         return;
     }
@@ -313,7 +374,7 @@ void CollageCanvas::mouseReleaseEvent(QMouseEvent* /*event*/)
         return;
     }
 
-    if (m_dragState == DragState::TransformingSlotImage) {
+    if (m_dragState == DragState::TransformingSlotImageMove || m_dragState == DragState::TransformingSlotImageScale) {
         int editIndex = m_document->editingSlotIndex();
         if (auto* slot = m_document->slotAt(editIndex)) {
             QPointF currentOffset = slot->imageOffset();
@@ -530,4 +591,49 @@ void CollageCanvas::dropEvent(QDropEvent* event)
     }
 }
 
+
+
+QRectF CollageCanvas::getImageRectInDocument(const Core::Slot* slotItem) const
+{
+    if (!slotItem || !slotItem->hasImage()) return {};
+    QRectF innerRect = slotItem->calculateInnerRect(m_document->canvasSize());
+    QPointF center = innerRect.center();
+    double scale = slotItem->imageScale();
+    QPointF offset = slotItem->imageOffset();
+    QSizeF imgSize = slotItem->pixmap().size();
+    
+    double w = imgSize.width() * scale;
+    double h = imgSize.height() * scale;
+    double x = center.x() + offset.x() - w / 2.0;
+    double y = center.y() + offset.y() - h / 2.0;
+    
+    return QRectF(x, y, w, h);
+}
+
+QRectF CollageCanvas::getHandleRectInViewport(const QPointF& cornerDocPos) const
+{
+    QPointF vpPos = mapDocumentToViewport(cornerDocPos);
+    double size = 10.0;
+    return QRectF(vpPos.x() - size / 2.0, vpPos.y() - size / 2.0, size, size);
+}
+
+int CollageCanvas::hitTestTransformHandles(const Core::Slot* slotItem, const QPointF& viewportPos) const
+{
+    QRectF imgRect = getImageRectInDocument(slotItem);
+    if (imgRect.isEmpty()) return -1;
+    
+    QPointF corners[4] = {
+        imgRect.topLeft(),
+        imgRect.topRight(),
+        imgRect.bottomRight(),
+        imgRect.bottomLeft()
+    };
+    
+    for (int i = 0; i < 4; ++i) {
+        if (getHandleRectInViewport(corners[i]).contains(viewportPos)) {
+            return i;
+        }
+    }
+    return -1;
+}
 } // namespace PhotoColla::UI

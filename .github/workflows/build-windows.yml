@@ -75,7 +75,7 @@ jobs:
                                           print(f'Copied via ntldd: {os.path.basename(dll_path)}')
                                           added += 1
                                   else:
-                                      for sdir in ['/ucrt64/bin', 'C:\\msys64\\ucrt64\\bin', '/c/msys64/ucrt64/bin']:
+                                      for sdir in ['/ucrt64/bin', 'C:/msys64/ucrt64/bin', '/c/msys64/ucrt64/bin']:
                                           cand = os.path.join(sdir, dll_name)
                                           if os.path.isfile(cand):
                                               target = os.path.join(dest, dll_name)
@@ -112,7 +112,7 @@ jobs:
           for cd in critical_dlls:
               target = os.path.join(dest, cd)
               if not os.path.exists(target):
-                  for sdir in ['/ucrt64/bin', 'C:\\msys64\\ucrt64\\bin', '/c/msys64/ucrt64/bin']:
+                  for sdir in ['/ucrt64/bin', 'C:/msys64/ucrt64/bin', '/c/msys64/ucrt64/bin']:
                       cand = os.path.join(sdir, cd)
                       if os.path.isfile(cand):
                           shutil.copy2(cand, target)
