@@ -15,32 +15,35 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install Qt 6.8
-        uses: jurplel/install-qt-action@v4
+      - name: Setup MSYS2 and Install Qt6
+        uses: msys2/setup-msys2@v2
         with:
-          version: '6.8.0'
-          host: 'windows'
-          target: 'desktop'
-          arch: 'win64_msvc2022_64'
-          modules: 'qtsvg'
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-qt6-base
+            mingw-w64-ucrt-x86_64-qt6-svg
 
-      - name: Setup MSVC Compiler
-        uses: ilammy/msvc-dev-cmd@v1
-
-      - name: Configure CMake
+      - name: Build PhotoColla (C++20 Release)
+        shell: msys2 {0}
         run: |
-          cmake -B build_win -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${{ env.Qt6_DIR }}"
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
 
-      - name: Build PhotoColla
+      - name: Package Windows Standalone Application
+        shell: msys2 {0}
         run: |
-          cmake --build build_win --config Release --parallel
+          mkdir -p package
+          cp build/PhotoColla.exe package/
+          windeployqt --no-translations --compiler-runtime package/PhotoColla.exe
+          cp /ucrt64/bin/libgcc_s_seh-1.dll /ucrt64/bin/libstdc++-6.dll /ucrt64/bin/libwinpthread-1.dll package/ 2>/dev/null || true
 
-      - name: Package with windeployqt
+      - name: Compress into Zip Archive
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path package
-          Copy-Item build_win/Release/PhotoColla.exe package/
-          & "${{ env.Qt6_DIR }}/bin/windeployqt.exe" --no-translations --compiler-runtime package/PhotoColla.exe
           Compress-Archive -Path package/* -DestinationPath PhotoColla-Windows-x64.zip
 
       - name: Upload Artifact (Zip with Exe)
