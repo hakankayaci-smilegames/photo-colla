@@ -278,4 +278,14 @@ void ToolboxPanel::addPhotoToLibrary(const QString& filePath)
     m_photoListWidget->addItem(item);
 }
 
+
+
+QStringList ToolboxPanel::getLibraryPhotos() const
+{
+    QStringList photos;
+    for (int i = 0; i < m_photoListWidget->count(); ++i) {
+        photos.append(m_photoListWidget->item(i)->data(Qt::UserRole).toString());
+    }
+    return photos;
+}
 } // namespace PhotoColla::UI

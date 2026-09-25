@@ -47,6 +47,7 @@ public:
     ~ToolboxPanel() override = default;
 
     void addPhotoToLibrary(const QString& filePath);
+    QStringList getLibraryPhotos() const;
 
 signals:
     void templateSelected(const QString& templateId);

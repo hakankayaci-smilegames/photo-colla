@@ -74,6 +74,8 @@ set(UI_SOURCES
     src/ui/dialogs/export_dialog.cpp
     src/ui/dialogs/welcome_dialog.h
     src/ui/dialogs/welcome_dialog.cpp
+    src/ui/dialogs/select_photos_dialog.h
+    src/ui/dialogs/select_photos_dialog.cpp
 )
 
 set(EXPORT_SOURCES

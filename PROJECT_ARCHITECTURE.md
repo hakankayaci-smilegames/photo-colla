@@ -87,8 +87,10 @@ photo-colla/
 │   │   │   └── toolbox_panel.h/.cpp
 │   │   ├── properties/             # Sağ panel: Border, Margin, Padding, Radius kontrolleri
 │   │   │   └── properties_panel.h/.cpp
-│   │   └── dialogs/                # Çıktı ve export ayar pencereleri
-│   │       └── export_dialog.h/.cpp
+│   │   └── dialogs/                # Çıktı ve diyalog pencereleri
+│   │       ├── export_dialog.h/.cpp
+│   │       ├── welcome_dialog.h/.cpp
+│   │       └── select_photos_dialog.h/.cpp
 │   └── export/                     # Yüksek çözünürlüklü çıktı motoru
 │       └── exporter.h/.cpp
 └── PROJECT_ARCHITECTURE.md         # Canlı tutulan mimari sözlük ve plan

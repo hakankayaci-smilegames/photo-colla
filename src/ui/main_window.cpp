@@ -1,5 +1,6 @@
 #include "main_window.h"
 #include "dialogs/export_dialog.h"
+#include "dialogs/select_photos_dialog.h"
 #include "export/exporter.h"
 #include "core/commands/collage_commands.h"
 #include "core/models/auto_layout_engine.h"
@@ -255,20 +256,24 @@ void MainWindow::onImportPhotos()
 
 void MainWindow::onAutoLayoutRequested()
 {
-    QStringList files = QFileDialog::getOpenFileNames(
-        this,
-        tr("Select Photos for Auto Collage"),
-        QString(),
-        tr("Images (*.png *.jpg *.jpeg *.webp *.bmp *.tiff)")
-    );
-
-    if (files.isEmpty()) return;
-
-    for (const auto& file : files) {
-        m_toolboxPanel->addPhotoToLibrary(file);
+    QStringList availablePhotos = m_toolboxPanel->getLibraryPhotos();
+    if (availablePhotos.isEmpty()) {
+        QMessageBox::information(this, tr("No Photos"), tr("Lütfen önce sol panele ('Photos' sekmesi) fotoğraflarınızı ekleyin."));
+        return;
     }
 
-    if (Core::AutoLayoutEngine::generateAndApply(m_document.get(), files)) {
+    PhotoColla::UI::SelectPhotosDialog dialog(availablePhotos, this);
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+
+    QStringList selectedFiles = dialog.selectedPhotos();
+    if (selectedFiles.isEmpty()) {
+        QMessageBox::warning(this, tr("Seçim Yapılmadı"), tr("En az 1 fotoğraf seçmelisiniz."));
+        return;
+    }
+
+    if (Core::AutoLayoutEngine::generateAndApply(m_document.get(), selectedFiles)) {
         // Clear undo stack since we completely rewrote slots without commands
         m_history->clear();
         emit m_document->documentChanged();
