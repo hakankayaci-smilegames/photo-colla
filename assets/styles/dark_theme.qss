@@ -1,0 +1,208 @@
+/* ===================================================================
+   PhotoColla Professional Studio Dark Theme (Figma/Lightroom Inspired)
+   =================================================================== */
+
+QMainWindow {
+    background-color: #1a1a1c;
+    color: #e6e6e6;
+}
+
+QWidget {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 13px;
+    color: #dedede;
+    selection-background-color: #2670e8;
+    selection-color: #ffffff;
+}
+
+/* Dock Widgets */
+QDockWidget {
+    titlebar-close-icon: none;
+    titlebar-normal-icon: none;
+    font-weight: 600;
+    color: #a0a0a5;
+}
+
+QDockWidget::title {
+    background: #222225;
+    padding: 8px 12px;
+    border-bottom: 1px solid #2e2e33;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Panels & Containers */
+QFrame#panelContainer, QWidget#dockContent {
+    background-color: #202023;
+    border: none;
+}
+
+/* Splitters */
+QSplitter::handle {
+    background-color: #28282c;
+}
+
+QSplitter::handle:horizontal {
+    width: 2px;
+}
+
+QSplitter::handle:vertical {
+    height: 2px;
+}
+
+/* ToolBar & Menu */
+QMenuBar {
+    background-color: #1a1a1c;
+    border-bottom: 1px solid #2a2a2e;
+    padding: 2px 6px;
+}
+
+QMenuBar::item {
+    background: transparent;
+    padding: 6px 10px;
+    border-radius: 4px;
+}
+
+QMenuBar::item:selected {
+    background: #2d2d32;
+    color: #ffffff;
+}
+
+QMenu {
+    background-color: #242428;
+    border: 1px solid #36363c;
+    padding: 4px;
+    border-radius: 6px;
+}
+
+QMenu::item {
+    padding: 6px 24px 6px 12px;
+    border-radius: 4px;
+}
+
+QMenu::item:selected {
+    background-color: #2c6be6;
+    color: #ffffff;
+}
+
+QToolBar {
+    background-color: #1f1f22;
+    border-bottom: 1px solid #2a2a2e;
+    spacing: 6px;
+    padding: 4px 8px;
+}
+
+QToolButton {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 5px 8px;
+    color: #dedede;
+}
+
+QToolButton:hover {
+    background-color: #2c2c31;
+    border-color: #3b3b42;
+}
+
+QToolButton:pressed, QToolButton:checked {
+    background-color: #255ecc;
+    border-color: #3a75e6;
+    color: #ffffff;
+}
+
+/* Push Buttons */
+QPushButton {
+    background-color: #2c2c32;
+    border: 1px solid #3c3c44;
+    border-radius: 5px;
+    padding: 6px 14px;
+    font-weight: 500;
+}
+
+QPushButton:hover {
+    background-color: #35353c;
+    border-color: #4f4f5a;
+}
+
+QPushButton:pressed {
+    background-color: #242429;
+}
+
+QPushButton#primaryButton {
+    background-color: #2563eb;
+    border: 1px solid #3b82f6;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+QPushButton#primaryButton:hover {
+    background-color: #1d4ed8;
+}
+
+/* Inputs & SpinBoxes */
+QLineEdit, QSpinBox, QDoubleSpinBox {
+    background-color: #161618;
+    border: 1px solid #34343a;
+    border-radius: 4px;
+    padding: 4px 8px;
+    color: #ffffff;
+}
+
+QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus {
+    border-color: #3b82f6;
+}
+
+/* Sliders */
+QSlider::groove:horizontal {
+    height: 4px;
+    background: #2e2e34;
+    border-radius: 2px;
+}
+
+QSlider::sub-page:horizontal {
+    background: #3b82f6;
+    border-radius: 2px;
+}
+
+QSlider::handle:horizontal {
+    background: #e2e8f0;
+    width: 14px;
+    margin-top: -5px;
+    margin-bottom: -5px;
+    border-radius: 7px;
+}
+
+QSlider::handle:horizontal:hover {
+    background: #ffffff;
+}
+
+/* ScrollBars */
+QScrollBar:vertical {
+    background: #1a1a1c;
+    width: 8px;
+    margin: 0;
+}
+
+QScrollBar::handle:vertical {
+    background: #36363d;
+    border-radius: 4px;
+    min-height: 20px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #4a4a54;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+/* Status Bar */
+QStatusBar {
+    background-color: #18181a;
+    border-top: 1px solid #27272b;
+    color: #888890;
+    font-size: 11px;
+}

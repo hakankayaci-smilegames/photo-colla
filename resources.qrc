@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>assets/styles/dark_theme.qss</file>
+        <file>assets/templates/default_templates.json</file>
+    </qresource>
+</RCC>

@@ -1,0 +1,44 @@
+{
+  "version": "1.0",
+  "templates": [
+    {
+      "id": "grid_2x2",
+      "name": "Classic 2x2 Grid",
+      "category": "Basic",
+      "slots": [
+        {"x": 0.0, "y": 0.0, "width": 0.5, "height": 0.5},
+        {"x": 0.5, "y": 0.0, "width": 0.5, "height": 0.5},
+        {"x": 0.0, "y": 0.5, "width": 0.5, "height": 0.5},
+        {"x": 0.5, "y": 0.5, "width": 0.5, "height": 0.5}
+      ]
+    },
+    {
+      "id": "split_1_2",
+      "name": "Hero Left, 2 Right",
+      "category": "Editorial",
+      "slots": [
+        {"x": 0.0, "y": 0.0, "width": 0.5, "height": 1.0},
+        {"x": 0.5, "y": 0.0, "width": 0.5, "height": 0.5},
+        {"x": 0.5, "y": 0.5, "width": 0.5, "height": 0.5}
+      ]
+    },
+    {
+      "id": "triple_horizontal",
+      "name": "Triptych Panoramic",
+      "category": "Panoramas",
+      "slots": [
+        {"x": 0.0, "y": 0.0, "width": 0.3333, "height": 1.0},
+        {"x": 0.3333, "y": 0.0, "width": 0.3334, "height": 1.0},
+        {"x": 0.6667, "y": 0.0, "width": 0.3333, "height": 1.0}
+      ]
+    },
+    {
+      "id": "single_focus",
+      "name": "Single Canvas",
+      "category": "Basic",
+      "slots": [
+        {"x": 0.0, "y": 0.0, "width": 1.0, "height": 1.0}
+      ]
+    }
+  ]
+}
