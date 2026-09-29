@@ -5,8 +5,14 @@
 [![Qt: 6.x](https://img.shields.io/badge/Qt-6.x-41CD52?logo=qt)](https://www.qt.io/)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-brightgreen.svg)](#-stand-alone-executables-no-installation-required)
 
+<p align="center">
+  <img src="assets/banner_art.jpg" alt="PhotoColla Studio Banner" width="100%" style="border-radius: 8px;">
+</p>
+
 > **Commercial-Grade, Hardware-Accelerated Desktop Photo Collage Studio**  
 > Built with modern C++20 and Qt 6. Engineered for professional creators, photographers, and print designers with non-destructive dual-pass clipping masks, intelligent aspect-ratio masonry layout generation, a real-time geometry inspector, and 300 DPI print-ready rendering.
+>
+> 🌐 **Interactive Web Demo:** Check out the single-file [landing_page.html](landing_page.html) for a live browser simulation.
 
 ---
 

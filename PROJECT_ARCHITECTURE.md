@@ -140,19 +140,44 @@ Her komut atomik, serializable ve tersine çevrilebilir (`undo()` ve `redo()`).
 - [x] **ADIM 4:** Sağ panel kontrollerinin (Margin, Radius, Border, Stroke) dinamik Signal/Slot ve Command entegrasyonu.
 - [x] **ADIM 5:** High-res ve 300 DPI Export motoru (PNG, JPG, WebP).
 - [x] **ADIM 6:** `AutoLayoutEngine` ile fotoğrafların aspect-ratio (en/boy oranı) değerlerini analiz edip kırpmayı (crop) minimize eden akıllı dinamik bsp/masonry grid algoritması eklendi.
+- [x] **ADIM 7:** Photoshop mantığında, 8 yönlü (4 köşe, 4 kenar) transform kutusu (Gizmo) eklendi; asimetrik (tek yönlü) stretching ve uniform scaling desteklendi.
+- [x] **ADIM 8:** `.pcolla` projesi kaydetme ve yükleme sistemi (JSON Serialization) ve uygulama başlangıcı için `WelcomeDialog` ekranı eklendi.
+- [x] **ADIM 9:** Otomatik kolaj özelliğinin, işletim sistemi yerine içerideki fotoğraf kütüphanesinden çoklu seçim yapılarak (SelectPhotosDialog) çalışması sağlandı.
 
 ---
 
 ## 7. Auto Layout (Smart Collage) Mekaniği
 
-Kullanıcının yüklediği fotoğrafların orijinal oranlarına göre matematiksel hesaplama yapar:
-1. Yüklenen fotoğrafların aspect-ratio'ları hesaplanır.
-2. Dinamik Programlama (DP) / Heuristic yaklaşımlarla yatay (satır tabanlı) veya dikey (sütun tabanlı) olacak şekilde en az cropping/bozulma yaratacak bölütleme yapılır.
-3. Bulunan bu bölütleme, oransal olarak normalleştirilmiş (0.0 - 1.0) koordinatlara dönüştürülür ve hazır şablona gerek kalmadan tamamen dinamik yeni Slot'lar üretilir.
+Kullanıcının seçtiği fotoğrafların orijinal oranlarına göre matematiksel hesaplama yapar:
+1. `ToolboxPanel` içerisindeki (içe aktarılmış) fotoğraflardan kullanıcı `SelectPhotosDialog` üzerinden seçim yapar.
+2. Seçilen fotoğrafların aspect-ratio'ları hesaplanır.
+3. Dinamik Programlama (DP) / Heuristic yaklaşımlarla yatay (satır tabanlı) veya dikey (sütun tabanlı) olacak şekilde en az cropping/bozulma yaratacak bölütleme yapılır.
+4. Bulunan bu bölütleme, oransal olarak normalleştirilmiş (0.0 - 1.0) koordinatlara dönüştürülür ve hazır şablona gerek kalmadan tamamen dinamik yeni Slot'lar üretilir.
 
 ---
 
-## 7. Hızlı Derleme ve Çalıştırma (Build & Run)
+## 8. Transform Gizmo ve Boyutlandırma (Scaling & Panning)
+
+Edit moduna geçildiğinde (slota çift tıklandığında), fotoğrafın sınırlarını belirten kesik çizgili bir bounding box ve 8 adet kontrol kutucuğu (handle) çizilir:
+- **Köşe Kontrolleri (0-3):** Fotoğrafı merkezden orantılı (uniform) olarak büyütüp küçültür.
+- **Kenar Kontrolleri (4-7):** Fotoğrafı sadece yatay (X) veya sadece dikey (Y) ekseninde esneterek (stretch/asymmetric) boyutlandırır.
+- **İç Alan:** Pan (sürükleme) işlemi için kullanılır.
+- Veri yapısında `m_imageScale` artık tek bir `double` yerine `QPointF` (X ve Y çarpanı) olarak saklanır.
+- Slot seçiliyken `Delete / Backspace` tuşlarına basıldığında fotoğraf karesi temizlenir.
+
+---
+
+## 9. Proje Serileştirmesi (.pcolla Formatı)
+
+PhotoColla projelerini dışarı kaydetmek ve sonradan geri yüklemek için özel `.pcolla` formatı kullanılır:
+- Arka planda saf `QJsonObject` ve `QJsonDocument` tabanlı **JSON** formatıdır.
+- Tuval boyutu, arka plan rengi, slot konumları, margin/padding/border radius gibi UI ayarları kaydedilir.
+- Fotoğraflar `base64` olarak gömülmez (dosya boyutunu şişirmemek ve I/O'yu bloklamamak adına), bunun yerine diske **mutlak dosya yolu (absolute path)** olarak kaydedilir.
+- Program açılışında `WelcomeDialog` (Başlangıç Ekranı) karşılar ve `QSettings` üzerinden son projelerin (Recent Projects) hızlıca açılmasını sağlar.
+
+---
+
+## 10. Hızlı Derleme ve Çalıştırma (Build & Run)
 
 ### Linux:
 ```bash
